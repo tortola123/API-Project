@@ -1,18 +1,166 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width">
-  <title>Countries</title>
-  <link href="style.css" rel="stylesheet" type="text/css" />
-  <script src="script.js"></script>
-</head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Magic: The Gathering – Card Search</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sometype+Mono&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0c0f1a;--red:#e23a2d;--ink:rgba(10,11,17,.44);--dim:rgba(255,255,255,.44)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:#fff;font:15px/normal "Sometype Mono",ui-monospace,monospace}
+.page{max-width:1440px;margin:0 auto;padding:104px 122px;display:flex;flex-direction:column;gap:86px}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:40px;min-height:248px}
+.logo{width:466px;max-width:100%;height:auto;mix-blend-mode:lighten;display:block}
+.controls{width:400px;display:flex;flex-direction:column;gap:20px}
+.field,select{background:#fff;border:0;border-radius:0;color:#0a0b11;font:inherit}
+.search{display:flex;align-items:center;justify-content:space-between;padding:4px 8px;gap:20px}
+.search input{flex:1;min-width:0;border:0;outline:0;background:none;font:inherit;color:#0a0b11}
+.search input::placeholder,select{color:var(--ink)}
+.search button{background:none;border:0;padding:0;color:#bdbdbd;cursor:pointer;display:flex}
+.selects{display:flex;gap:7px}
+select{flex:1;min-width:0;padding:4px 6px;appearance:none;cursor:pointer;
+  background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='10' viewBox='0 0 20 10'%3E%3Cpath d='M1 1h18L10 9z' fill='%23d9d9d9'/%3E%3C/svg%3E") no-repeat right 6px center}
+select:first-child{flex:0 0 129px}
+.colours{display:flex;align-items:center;gap:8px;height:62px}
+.colours span{color:var(--dim)}
+.colours button{width:50px;height:50px;padding:6px;background:none;border:0;cursor:pointer;border-radius:50%;opacity:1}
+.colours button img{width:38px;height:38px;display:block}
+.colours button[aria-pressed=true]{outline:2px solid var(--red);outline-offset:-2px}
+:focus-visible{outline:2px solid var(--red);outline-offset:2px}
+.results{display:flex;flex-direction:column;gap:10px}
+hr{width:100%;border:0;border-top:1px solid #fff;margin:0}
+.summary{margin:0;color:var(--red);display:flex;align-items:center;gap:17px;flex-wrap:wrap;padding:6px 0}
+.summary i{width:5px;height:5px;background:var(--red);border-radius:50%}
+@media(max-width:1000px){.page{padding:48px 24px;gap:48px}.top{flex-direction:column;align-items:flex-start}.controls{width:100%}}
 
-<body> 
-  <header>
-    <h1>Countries</h1>
-  </header>
-  <section id="countries"></section>
+.status{margin:-40px 0 0;color:var(--dim)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:20px;margin-top:-40px}
+.grid img{width:100%;aspect-ratio:488/680;object-fit:cover;border-radius:4.5% / 3.3%;display:block;background:#161a2b}
+.more{align-self:center;background:none;border:1px solid var(--red);color:var(--red);font:inherit;padding:10px 22px;cursor:pointer}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="page">
+  <section class="top">
+    <img class="logo" src="assets/logo.png" alt="Magic: The Gathering">
+
+    <form class="controls" id="form">
+      <label class="field search">
+        <input type="search" id="q" placeholder="Search for Card... eg “Sol ring”" aria-label="Search for card">
+        <button type="submit" aria-label="Search">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="9" cy="9" r="6.5"/><path d="M14 14l6 6"/></svg>
+        </button>
+      </label>
+
+      <div class="selects">
+        <select id="set" aria-label="Sets"><option value="">Sets</option></select>
+        <select id="type" aria-label="Type"><option value="">Type</option><option>Creature</option><option>Instant</option><option>Sorcery</option><option>Artifact</option><option>Enchantment</option><option>Land</option><option>Planeswalker</option></select>
+        <select id="rarity" aria-label="Rarity"><option value="">Rarity</option><option>common</option><option>uncommon</option><option>rare</option><option>mythic</option></select>
+      </div>
+
+      <div class="colours" role="group" aria-label="Colour">
+        <span>Colour</span>
+        <button type="button" data-c="w" aria-pressed="false" aria-label="White"><img src="assets/mana-w.svg" alt=""></button>
+        <button type="button" data-c="u" aria-pressed="false" aria-label="Blue"><img src="assets/mana-u.svg" alt=""></button>
+        <button type="button" data-c="b" aria-pressed="false" aria-label="Black"><img src="assets/mana-b.svg" alt=""></button>
+        <button type="button" data-c="r" aria-pressed="false" aria-label="Red"><img src="assets/mana-r.svg" alt=""></button>
+        <button type="button" data-c="g" aria-pressed="false" aria-label="Green"><img src="assets/mana-g.svg" alt=""></button>
+        <button type="button" data-c="c" aria-pressed="false" aria-label="Colourless"><img src="assets/mana-c.svg" alt=""></button>
+      </div>
+    </form>
+  </section>
+
+  <section class="results">
+    <hr>
+    <p class="summary" id="summary">“Search Result”<span>Set Result</span><i></i><span>Type Result</span><i></i><span>Rarity Result</span><i></i><span>Colour Result</span><i></i></p>
+    <hr>
+  </section>
+
+  <p class="status" id="status" aria-live="polite"></p>
+  <div class="grid" id="grid"></div>
+  <button class="more" id="more" type="button" hidden>Load more</button>
+</div>
+
+<script>
+const API = "https://api.scryfall.com";
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
+const COLOURS = { w:"White", u:"Blue", b:"Black", r:"Red", g:"Green", c:"Colourless" };
+let next = null, busy = false;
+
+const picked = () => [...document.querySelectorAll(".colours button[aria-pressed=true]")].map(b => b.dataset.c);
+
+// Fill the Sets dropdown from Scryfall
+async function loadSets(){
+  try {
+    const d = await (await fetch(API + "/sets")).json();
+    $("set").innerHTML = '<option value="">Sets</option>' +
+      d.data.filter(s => !s.digital).map(s => `<option value="${esc(s.code)}">${esc(s.name)}</option>`).join("");
+  } catch { /* dropdown just stays empty if Scryfall is unreachable */ }
+}
+
+// Turn the form into a Scryfall search string
+function buildQuery(){
+  const parts = [], q = $("q").value.trim(), c = picked();
+  if (q) parts.push(q);
+  if ($("set").value) parts.push("s:" + $("set").value);
+  if ($("type").value) parts.push("t:" + $("type").value);
+  if ($("rarity").value) parts.push("r:" + $("rarity").value);
+  if (c.includes("c")) parts.push("c:c");
+  else if (c.length) parts.push("c:" + c.join(""));
+  return parts.join(" ");
+}
+
+// Update the red line under the search area
+function updateSummary(){
+  const q = $("q").value.trim();
+  const set = $("set").value ? $("set").selectedOptions[0].text : "Any set";
+  const type = $("type").value || "Any type";
+  const rarity = $("rarity").value || "Any rarity";
+  const c = picked(), colour = c.length ? c.map(k => COLOURS[k]).join(" / ") : "Any colour";
+  $("summary").innerHTML = `<span>“${esc(q || "All cards")}”</span><span>${esc(set)}</span><i></i><span>${esc(type)}</span><i></i><span>${esc(rarity)}</span><i></i><span>${esc(colour)}</span><i></i>`;
+}
+
+const imgOf = c => (c.image_uris || (c.card_faces && c.card_faces[0].image_uris) || {}).normal || "";
+
+async function fetchPage(url){
+  if (busy) return; busy = true;
+  $("status").textContent = "Searching…";
+  try {
+    const r = await fetch(url), d = await r.json();
+    if (!r.ok){ $("status").textContent = d.details || "No cards found."; $("more").hidden = true; }
+    else {
+      $("grid").insertAdjacentHTML("beforeend", d.data.map(c =>
+        `<a href="${esc(c.scryfall_uri)}" target="_blank" rel="noopener"><img src="${esc(imgOf(c))}" alt="${esc(c.name)}" loading="lazy"></a>`).join(""));
+      next = d.has_more ? d.next_page : null;
+      $("more").hidden = !next;
+      $("status").textContent = d.total_cards + " cards found";
+    }
+  } catch { $("status").textContent = "Couldn't reach Scryfall. Check your connection."; }
+  busy = false;
+}
+
+function run(){
+  const query = buildQuery();
+  if (!query){ $("status").textContent = "Type a card name or pick a filter."; return; }
+  updateSummary();
+  $("grid").innerHTML = "";
+  fetchPage(API + "/cards/search?order=name&q=" + encodeURIComponent(query));
+}
+
+$("form").addEventListener("submit", e => { e.preventDefault(); run(); });
+["set", "type", "rarity"].forEach(id => $(id).addEventListener("change", run));
+document.querySelectorAll(".colours button").forEach(b => b.addEventListener("click", () => {
+  b.setAttribute("aria-pressed", b.getAttribute("aria-pressed") !== "true");
+  run();
+}));
+$("more").addEventListener("click", () => next && fetchPage(next));
+
+loadSets();
+</script>
 </body>
 </html>
