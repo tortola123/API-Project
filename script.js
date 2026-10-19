@@ -2,7 +2,7 @@ const API = "https://api.scryfall.com";
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
 const COLOURS = { w:"White", u:"Blue", b:"Black", r:"Red", g:"Green", c:"Colourless" };
-let next = null, busy = false;
+let next = null, busy = false, recent = false;
 
 const picked = () => [...document.querySelectorAll(".colours button[aria-pressed=true]")].map(b => b.dataset.c);
 
@@ -10,7 +10,7 @@ const picked = () => [...document.querySelectorAll(".colours button[aria-pressed
 async function loadSets(){
   try {
     const d = await (await fetch(API + "/sets")).json();
-    $("set").innerHTML = '<option value="">Sets</option>' +
+    $("set").innerHTML = '<option value="">All Sets</option>' +
       d.data.filter(s => !s.digital).map(s => `<option value="${esc(s.code)}">${esc(s.name)}</option>`).join("");
   } catch { /* dropdown just stays empty if Scryfall is unreachable */ }
 }
@@ -23,8 +23,7 @@ function buildQuery(){
   if ($("type").value) parts.push("t:" + $("type").value);
   if ($("rarity").value) parts.push("r:" + $("rarity").value);
   if (c.includes("c")) parts.push("c:c");
-  else if (c.length) parts.push("c:" + c.join(""));
-  return parts.join(" ");
+  else if (c.length) parts.push("c=" + c.join(""));  return parts.join(" ");
 }
 
 // Update the red line under the search area
@@ -34,11 +33,10 @@ function updateSummary(){
   const type = $("type").value || "Any type";
   const rarity = $("rarity").value || "Any rarity";
   const c = picked(), colour = c.length ? c.map(k => COLOURS[k]).join(" / ") : "Any colour";
-  $("summary").innerHTML = `<span>“${esc(q || "All cards")}”</span><span>${esc(set)}</span><i></i><span>${esc(type)}</span><i></i><span>${esc(rarity)}</span><i></i><span>${esc(colour)}</span><i></i>`;
+  $("summary").innerHTML = `<span>“${esc(q || (buildQuery() ? "All cards" : "Latest releases"))}”</span><span>${esc(set)}</span><i></i><span>${esc(type)}</span><i></i><span>${esc(rarity)}</span><i></i><span>${esc(colour)}</span><i></i>`;
 }
 
-const imgOf = c => (c.image_uris || (c.card_faces && c.card_faces[0].image_uris) || {}).normal || "";
-
+const imgOf = (c, size = "normal") => (c.image_uris || (c.card_faces && c.card_faces[0].image_uris) || {})[size] || "";
 async function fetchPage(url){
   if (busy) return; busy = true;
   $("status").textContent = "Searching…";
@@ -47,20 +45,33 @@ async function fetchPage(url){
     if (!r.ok){ $("status").textContent = d.details || "No cards found."; $("more").hidden = true; }
     else {
       $("grid").insertAdjacentHTML("beforeend", d.data.map(c =>
-        `<a href="${esc(c.scryfall_uri)}" target="_blank" rel="noopener"><img src="${esc(imgOf(c))}" alt="${esc(c.name)}" loading="lazy"></a>`).join(""));
+  `<button type="button" class="card" data-big="${esc(imgOf(c, "large"))}"><img src="${esc(imgOf(c))}" alt="${esc(c.name)}" loading="lazy"></button>`).join(""));
       next = d.has_more ? d.next_page : null;
       $("more").hidden = !next;
-      $("status").textContent = d.total_cards + " cards found";
+      $("status").textContent = recent ? "Latest releases" : d.total_cards + " cards found";
     }
   } catch { $("status").textContent = "Couldn't reach Scryfall. Check your connection."; }
   busy = false;
 }
 
+// function run(){
+//   const query = buildQuery();
+//   if (!query){ $("status").textContent = "Type a card name or pick a filter."; return; }
+//   updateSummary();
+//   $("grid").innerHTML = "";
+//   fetchPage(API + "/cards/search?order=name&q=" + encodeURIComponent(query));
+// }
+
 function run(){
   const query = buildQuery();
-  if (!query){ $("status").textContent = "Type a card name or pick a filter."; return; }
+  recent = !query;
   updateSummary();
   $("grid").innerHTML = "";
+  if (recent){
+    const today = new Date().toISOString().slice(0, 10);
+    fetchPage(API + "/cards/search?order=released&dir=desc&unique=prints&q=" + encodeURIComponent("game:paper date<=" + today));
+    return;
+  }
   fetchPage(API + "/cards/search?order=name&q=" + encodeURIComponent(query));
 }
 
@@ -72,4 +83,15 @@ document.querySelectorAll(".colours button").forEach(b => b.addEventListener("cl
 }));
 $("more").addEventListener("click", () => next && fetchPage(next));
 
+// Card pop-up
+$("grid").addEventListener("click", e => {
+  const b = e.target.closest(".card"); if (!b) return;
+  $("big").src = b.dataset.big;
+  $("big").alt = b.querySelector("img").alt;
+  $("dlg").showModal();
+});
+$("close").addEventListener("click", () => $("dlg").close());
+$("dlg").addEventListener("click", e => { if (e.target === $("dlg")) $("dlg").close(); });
+
 loadSets();
+run();

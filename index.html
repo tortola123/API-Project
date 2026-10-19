@@ -23,9 +23,9 @@
       </label>
 
       <div class="selects">
-        <select id="set" aria-label="Sets"><option value="">Sets</option></select>
-        <select id="type" aria-label="Type"><option value="">Type</option><option>Creature</option><option>Instant</option><option>Sorcery</option><option>Artifact</option><option>Enchantment</option><option>Land</option><option>Planeswalker</option></select>
-        <select id="rarity" aria-label="Rarity"><option value="">Rarity</option><option>common</option><option>uncommon</option><option>rare</option><option>mythic</option></select>
+        <select id="set" aria-label="Sets"><option value="">All Sets</option></select>
+        <select id="type" aria-label="Type"><option value="">All Types</option><option>Creature</option><option>Instant</option><option>Sorcery</option><option>Artifact</option><option>Enchantment</option><option>Land</option><option>Planeswalker</option></select>
+        <select id="rarity" aria-label="Rarity"><option value="">All Rarities</option><option>common</option><option>uncommon</option><option>rare</option><option>mythic</option></select>
       </div>
 
       <div class="colours" role="group" aria-label="Colour">
@@ -49,7 +49,11 @@
   <p class="status" id="status" aria-live="polite"></p>
   <div class="grid" id="grid"></div>
   <button class="more" id="more" type="button" hidden>Load more</button>
-</div>`
+</div>
+<dialog id="dlg">
+  <img id="big" alt="">
+  <button type="button" class="close" id="close">Close</button>
+</dialog>
 <script src="script.js"></script>
 </body>
 </html>
